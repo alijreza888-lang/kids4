@@ -1,0 +1,7 @@
+{
+  "name": "KidsJoy Learning Adventure",
+  "description": "A colorful, interactive educational app for kids featuring 25 categories and 6 different games to learn English vocabulary, shapes, and more.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}

@@ -1,0 +1,17 @@
+
+{
+  "short_name": "KidsJoy",
+  "name": "KidsJoy Learning Adventure",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3048/3048122.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#FFD233",
+  "background_color": "#ffffff"
+}
