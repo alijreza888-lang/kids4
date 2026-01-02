@@ -1,24 +1,30 @@
 import { GoogleGenAI, Modality, Type } from "@google/genai";
 import { Item } from "../types";
 
-const createAI = () => {
-  const apiKey = process.env.API_KEY || "";
+// ایجاد اینستنس جدید در هر فراخوانی برای اطمینان از داشتن آخرین کلید از process.env
+const getClient = () => {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
+    throw new Error("API_KEY_MISSING");
+  }
   return new GoogleGenAI({ apiKey });
 };
 
 export const getFunFact = async (itemName: string, categoryName: string): Promise<string> => {
-  const ai = createAI();
   try {
+    const ai = getClient();
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: `Tell me a very short, simple, and fun fact for a child about "${itemName}" in category "${categoryName}".`,
     });
-    return response.text || "Let's learn more about this!";
-  } catch (e) { return "Learning is fun!"; }
+    return response.text || "Learning is fun!";
+  } catch (e) {
+    throw e;
+  }
 };
 
 export const expandCategoryItems = async (categoryName: string, existingItems: Item[]): Promise<Item[]> => {
-  const ai = createAI();
+  const ai = getClient();
   const existingNames = existingItems.map(i => i.name).join(", ");
   
   const response = await ai.models.generateContent({
@@ -56,7 +62,7 @@ export const expandCategoryItems = async (categoryName: string, existingItems: I
 };
 
 export const generateSpeech = async (text: string): Promise<string | undefined> => {
-  const ai = createAI();
+  const ai = getClient();
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash-preview-tts",
     contents: [{ parts: [{ text: `Say clearly: ${text}` }] }],
@@ -71,8 +77,8 @@ export const generateSpeech = async (text: string): Promise<string | undefined> 
 };
 
 export const generateItemImage = async (itemName: string, categoryName: string): Promise<string | undefined> => {
-  const ai = createAI();
-  const prompt = `A clean, cute 3D cartoon illustration of a ${itemName} on white background. High quality, vibrant.`;
+  const ai = getClient();
+  const prompt = `A clean, cute 3D cartoon illustration of a ${itemName} on white background. High quality, vibrant style for kids.`;
   
   const response = await ai.models.generateContent({
     model: 'gemini-2.5-flash-image',
