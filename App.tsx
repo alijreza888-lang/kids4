@@ -8,7 +8,7 @@ import { imageStorage } from './services/storage';
 
 const App: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>(() => {
-    const saved = localStorage.getItem('kids_joy_v9_data');
+    const saved = localStorage.getItem('kids_joy_v10_data');
     return saved ? JSON.parse(saved) : INITIAL_CATEGORIES;
   });
 
@@ -28,34 +28,39 @@ const App: React.FC = () => {
   const [showAllCats, setShowAllCats] = useState(false);
 
   useEffect(() => {
-    localStorage.setItem('kids_joy_v9_data', JSON.stringify(categories));
+    localStorage.setItem('kids_joy_v10_data', JSON.stringify(categories));
   }, [categories]);
 
-  // اصلاح منطق کلید API طبق قوانین Race Condition
-  const ensureApiKey = async () => {
+  const handleApiError = async (error: any) => {
+    console.error("API Error Details:", error);
+    const errorStr = String(error);
+    
+    // اگر کلید انتخاب نشده یا نامعتبر باشد، مستقیم پنجره را باز می‌کنیم
+    if (
+      errorStr.includes("API_KEY_MISSING") || 
+      errorStr.includes("API key is missing") ||
+      errorStr.includes("Requested entity was not found") ||
+      errorStr.includes("401") || 
+      errorStr.includes("403")
+    ) {
+      if (window.aistudio) {
+        await window.aistudio.openSelectKey();
+      }
+    } else {
+      // برای سایر خطاها (مثل اینترنت)
+      console.warn("Non-auth error:", error);
+    }
+  };
+
+  const checkKeyBeforeAction = async () => {
     if (window.aistudio) {
       const hasKey = await window.aistudio.hasSelectedApiKey();
       if (!hasKey) {
         await window.aistudio.openSelectKey();
-        // طبق دستورالعمل: فرض می‌کنیم انتخاب موفق بوده و ادامه می‌دهیم
-        return true; 
+        return true; // فرض بر انتخاب موفق طبق مستندات
       }
     }
-    return !!process.env.API_KEY;
-  };
-
-  const handleApiError = async (error: any) => {
-    console.error("Magic Tool Error:", error);
-    const msg = error?.message || "";
-    
-    // اگر پروژه پیدا نشد، دوباره درخواست انتخاب کلید می‌دهیم
-    if (msg.includes("Requested entity was not found")) {
-      if (window.aistudio) await window.aistudio.openSelectKey();
-    } else if (msg.includes("API Key") || msg.includes("401") || msg.includes("403")) {
-      if (window.aistudio) await window.aistudio.openSelectKey();
-    } else {
-      alert("Magic is busy! Please check your internet or your Paid API Key.");
-    }
+    return true;
   };
 
   useEffect(() => {
@@ -63,7 +68,7 @@ const App: React.FC = () => {
       if (state.view === 'learning_detail' && state.selectedCategory) {
         const item = state.selectedCategory.items[learningIndex];
         if (item) {
-          const cached = await imageStorage.get(`img_v9_${item.id}`);
+          const cached = await imageStorage.get(`img_v10_${item.id}`);
           setItemImage(cached);
         }
       }
@@ -80,33 +85,36 @@ const App: React.FC = () => {
         try {
           const audio = await generateSpeech(text);
           if (audio) { await playTTSSound(audio, text); played = true; }
-        } catch (e) {}
+        } catch (e) { console.error("TTS Failed:", e); }
       }
       if (!played) await playLocalSpeech(text);
-    } catch (e) {}
+    } catch (e) { console.error("Speech Error:", e); }
     finally { setIsSpeaking(false); }
   };
 
   const handleImageGen = async () => {
     const item = state.selectedCategory?.items[learningIndex];
     if (isGeneratingImg || !item) return;
-    await ensureApiKey(); // فقط پنجره را باز می‌کند و ادامه می‌دهد
-
+    
+    await checkKeyBeforeAction();
     setIsGeneratingImg(true);
     try {
       const url = await generateItemImage(item.name, state.selectedCategory!.name);
       if (url) {
-        await imageStorage.set(`img_v9_${item.id}`, url);
+        await imageStorage.set(`img_v10_${item.id}`, url);
         setItemImage(url);
       }
-    } catch (e) { await handleApiError(e); }
-    finally { setIsGeneratingImg(false); }
+    } catch (e) { 
+      await handleApiError(e); 
+    } finally { 
+      setIsGeneratingImg(false); 
+    }
   };
 
   const handleExpand = async () => {
     if (isExpanding || !state.selectedCategory) return;
-    await ensureApiKey();
-
+    
+    await checkKeyBeforeAction();
     setIsExpanding(true);
     try {
       const newItems = await expandCategoryItems(state.selectedCategory.name, state.selectedCategory.items);
@@ -118,8 +126,11 @@ const App: React.FC = () => {
         const refreshed = updated.find(cat => cat.id === state.selectedCategory?.id);
         if (refreshed) setState(s => ({ ...s, selectedCategory: refreshed }));
       }
-    } catch (e) { await handleApiError(e); }
-    finally { setIsExpanding(false); }
+    } catch (e) { 
+      await handleApiError(e); 
+    } finally { 
+      setIsExpanding(false); 
+    }
   };
 
   return (
@@ -128,7 +139,7 @@ const App: React.FC = () => {
         <div className="flex-1 flex flex-col bg-slate-50 overflow-hidden pb-[var(--safe-bottom)]">
           <div className="bg-[#FFD233] pt-[calc(var(--safe-top)+1.5rem)] pb-8 px-6 rounded-b-[3rem] shadow-xl flex flex-col items-center flex-shrink-0 z-10">
             <h1 className="text-4xl font-kids text-white uppercase tracking-tighter drop-shadow-md">KIDS JOY</h1>
-            <p className="text-white/80 font-bold text-[10px] mt-1 tracking-[0.2em] uppercase">Adventure Room</p>
+            <p className="text-white/80 font-bold text-[10px] mt-1 tracking-[0.2em] uppercase">Learning Adventure</p>
           </div>
           
           <div className="flex-1 overflow-y-auto p-6 space-y-6 scroll-container hide-scrollbar">
@@ -145,8 +156,8 @@ const App: React.FC = () => {
 
             <div className="space-y-4">
               <div className="flex items-center justify-between px-2">
-                <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest">Topics</h2>
-                <button onClick={() => setShowAllCats(true)} className="text-[10px] font-bold text-indigo-500 underline">View All 25</button>
+                <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest">Main Topics</h2>
+                <button onClick={() => setShowAllCats(true)} className="text-[10px] font-bold text-indigo-500 underline">Browse 25 Categories</button>
               </div>
               <div className="grid grid-cols-3 gap-3">
                 {categories.slice(0, 9).map(cat => (
@@ -160,23 +171,22 @@ const App: React.FC = () => {
             
             <div className="pt-4 text-center">
               <button onClick={() => window.aistudio?.openSelectKey()} className="px-6 py-2 bg-white rounded-full text-[9px] font-black text-slate-200 uppercase tracking-widest border border-slate-100">
-                Change API Key 🪄
+                Update API Key 🪄
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* تمام ۲۵ دسته‌بندی در یک نگاه */}
       {showAllCats && (
         <div className="fixed inset-0 bg-white z-[100] flex flex-col animate-in slide-in-from-bottom duration-300">
           <div className="bg-slate-50 p-6 flex items-center justify-between border-b">
-            <h2 className="text-xl font-kids text-slate-800 uppercase">All 25 Topics</h2>
+            <h2 className="text-xl font-kids text-slate-800 uppercase">Categories</h2>
             <button onClick={() => setShowAllCats(false)} className="w-10 h-10 bg-slate-200 rounded-full flex items-center justify-center text-xl">✕</button>
           </div>
-          <div className="flex-1 overflow-y-auto p-6 grid grid-cols-3 gap-4 pb-12">
+          <div className="flex-1 overflow-y-auto p-6 grid grid-cols-3 gap-4 pb-12 scroll-container">
             {categories.map(cat => (
-              <button key={cat.id} onClick={() => { setState({ ...state, view: 'learning_detail', selectedCategory: cat }); setShowAllCats(false); }} className={`${cat.color} aspect-square rounded-[2rem] shadow-md text-white flex flex-col items-center justify-center btn-tap`}>
+              <button key={cat.id} onClick={() => { setState({ ...state, view: 'learning_detail', selectedCategory: cat }); setShowAllCats(false); }} className={`${cat.color} aspect-square rounded-[2rem] shadow-md text-white flex flex-col items-center justify-center btn-tap border-b-4 border-black/10`}>
                 <span className="text-3xl">{cat.icon}</span>
                 <span className="text-[9px] font-black mt-1 uppercase text-center px-1">{cat.name}</span>
               </button>
@@ -202,12 +212,10 @@ const App: React.FC = () => {
             </div>
 
             <div className="flex-1 flex flex-col items-center justify-center p-6 relative">
-              {/* دکمه نقاشی - انتقال به پایین برای جلوگیری از تداخل */}
               <button onClick={handleImageGen} className={`absolute bottom-32 left-8 w-16 h-16 bg-pink-500 rounded-full flex items-center justify-center text-3xl text-white shadow-2xl border-4 border-white z-20 btn-tap ${isGeneratingImg ? 'animate-spin' : ''}`}>
                 {isGeneratingImg ? '⏳' : '🎨'}
               </button>
               
-              {/* دکمه صدا - انتقال به پایین */}
               <button onClick={() => handleSpeech(state.selectedCategory?.items[learningIndex]?.name || "")} className="absolute bottom-32 right-8 w-16 h-16 bg-indigo-500 rounded-full flex items-center justify-center text-3xl text-white shadow-2xl border-4 border-white z-20 btn-tap">
                 🔊
               </button>
@@ -245,14 +253,13 @@ const App: React.FC = () => {
             <div className="px-8 pb-10 flex-shrink-0">
               <button onClick={handleExpand} disabled={isExpanding} className={`w-full py-5 rounded-[3rem] font-black text-white shadow-2xl transition-all flex items-center justify-center space-x-3 text-lg tracking-widest active:scale-95 ${isExpanding ? 'bg-slate-300' : 'bg-magic magic-btn-active'}`}>
                 <span className="text-3xl">🪄</span>
-                <span>{isExpanding ? 'WAIT...' : `GET 10 NEW`}</span>
+                <span>{isExpanding ? 'WORKING MAGIC...' : `GET 10 NEW`}</span>
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* سایر بخش‌ها مشابه قبل */}
       {state.view === 'alphabet' && (
         <div className="flex-1 flex flex-col overflow-hidden pb-[var(--safe-bottom)] bg-slate-50">
           <div className="bg-[#22C55E] pt-[calc(var(--safe-top)+0.5rem)] pb-4 px-6 rounded-b-[2rem] shadow-sm flex items-center justify-between flex-shrink-0">
