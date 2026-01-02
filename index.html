@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -21,45 +20,36 @@
             width: 100%;
             margin: 0;
             padding: 0;
-            overflow: hidden; /* جلوگیری از اسکرول خوردن کل صفحه */
-            background-color: #f8fafc;
+            overflow: hidden;
+            background-color: #ffffff;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
         }
-        body {
-            font-family: 'Outfit', sans-serif;
+        #root { 
+            height: 100dvh;
             display: flex;
             flex-direction: column;
         }
-        #root { 
-            flex: 1;
-            display: flex; 
-            flex-direction: column;
-            height: 100dvh; /* استفاده از Dynamic Viewport Height برای موبایل */
-        }
         .font-kids { font-family: 'Fredoka', cursive; }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
-        button:active { transform: scale(0.95); transition: 0.1s; }
-        .bg-magic { background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); }
         
-        /* بهینه‌سازی برای دکمه‌های بزرگ و لمسی کودکان */
-        .learning-card {
-            width: 90%;
-            max-width: 320px;
-            margin: 0 auto;
+        /* انیمیشن برای جادوی هوش مصنوعی */
+        @keyframes magic-glow {
+            0% { box-shadow: 0 0 5px #6366f1; }
+            50% { box-shadow: 0 0 20px #a855f7; }
+            100% { box-shadow: 0 0 5px #6366f1; }
         }
-
-        @media (max-height: 700px) {
-            .learning-card { transform: scale(0.95); }
-        }
+        .magic-active { animation: magic-glow 2s infinite; }
+        
+        .bg-magic { background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); }
     </style>
 <script type="importmap">
 {
   "imports": {
-    "react": "https://esm.sh/react@19.0.0",
-    "react-dom": "https://esm.sh/react-dom@19.0.0",
-    "react-dom/client": "https://esm.sh/react-dom@19.0.0/client",
-    "@google/genai": "https://esm.sh/@google/genai@1.34.0",
+    "react": "https://esm.sh/react@^19.2.3",
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
     "react/": "https://esm.sh/react@^19.2.3/",
+    "@google/genai": "https://esm.sh/@google/genai@^1.34.0",
     "vite": "https://esm.sh/vite@^7.3.0",
     "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
   }
