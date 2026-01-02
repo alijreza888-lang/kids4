@@ -4,15 +4,14 @@ import { Item } from "../types";
 
 /**
  * Creates a fresh GoogleGenAI instance using the current process.env.API_KEY.
- * Guidelines require using process.env.API_KEY directly and creating fresh instances
- * to ensure latest key from user dialog is used.
  */
 const getAI = () => {
-  return new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+  const apiKey = (window as any).process?.env?.API_KEY || (import.meta as any).env?.VITE_API_KEY || process.env.API_KEY;
+  return new GoogleGenAI({ apiKey: apiKey as string });
 };
 
 /**
- * Generates a short fun fact for children about a specific item.
+ * Generates a short fun fact for children.
  */
 export const getFunFact = async (itemName: string, categoryName: string): Promise<string> => {
   try {
@@ -24,7 +23,7 @@ export const getFunFact = async (itemName: string, categoryName: string): Promis
     return response.text || "Learning is fun!";
   } catch (error) {
     console.error("Fun Fact Error:", error);
-    throw error; // Let the caller handle the error (e.g., prompt for key)
+    throw error;
   }
 };
 
@@ -65,13 +64,13 @@ export const expandCategoryItems = async (categoryName: string, existingItems: I
       color: "bg-white"
     }));
   } catch (e) {
-    console.error("AI Error:", e);
+    console.error("AI Expansion Error:", e);
     throw e;
   }
 };
 
 /**
- * Generates high-quality speech for a given text.
+ * Generates high-quality speech.
  */
 export const generateSpeech = async (text: string): Promise<string | undefined> => {
   try {
@@ -107,6 +106,10 @@ export const generateItemImage = async (itemName: string, categoryName: string):
       contents: { parts: [{ text: prompt }] },
       config: { imageConfig: { aspectRatio: "1:1" } }
     });
+
+    if (!response.candidates || response.candidates.length === 0) {
+      throw new Error("Safety filters blocked the image generation.");
+    }
 
     for (const part of response.candidates[0].content.parts) {
       if (part.inlineData) {
