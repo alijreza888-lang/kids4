@@ -20,10 +20,10 @@
             width: 100%;
             margin: 0;
             padding: 0;
-            background-color: #f8fafc;
+            overflow: hidden;
+            background-color: #ffffff;
             -webkit-tap-highlight-color: transparent;
             user-select: none;
-            overflow: hidden; /* Prevent body bounce */
         }
         #root { 
             height: 100dvh;
@@ -33,33 +33,19 @@
         }
         .font-kids { font-family: 'Fredoka', cursive; }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
-        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        
-        /* Smooth scrolling for mobile */
-        .scroll-container {
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
-        }
-
-        .horizontal-scroll {
-            display: flex;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            scroll-snap-type: x mandatory;
-        }
-        
-        .horizontal-scroll > * {
-            scroll-snap-align: start;
-        }
-
-        @keyframes magic-glow {
-            0% { box-shadow: 0 0 10px rgba(99, 102, 241, 0.4); }
-            50% { box-shadow: 0 0 25px rgba(168, 85, 247, 0.7); }
-            100% { box-shadow: 0 0 10px rgba(99, 102, 241, 0.4); }
-        }
-        .magic-active { animation: magic-glow 2s infinite; }
         
         .bg-magic { background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); }
+        
+        @keyframes pulse-magic {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.4); }
+            70% { transform: scale(1.05); box-shadow: 0 0 0 15px rgba(168, 85, 247, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(168, 85, 247, 0); }
+        }
+        .magic-btn-active { animation: pulse-magic 2s infinite; }
+        
+        /* بهینه‌سازی دکمه‌ها برای انگشتان کوچک کودکان */
+        .btn-tap { transition: transform 0.1s; }
+        .btn-tap:active { transform: scale(0.9); }
     </style>
 <script type="importmap">
 {
