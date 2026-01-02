@@ -8,7 +8,7 @@ import { imageStorage } from './services/storage';
 
 const App: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>(() => {
-    const saved = localStorage.getItem('kids_joy_v10_data');
+    const saved = localStorage.getItem('kids_joy_v11_data');
     return saved ? JSON.parse(saved) : INITIAL_CATEGORIES;
   });
 
@@ -26,41 +26,43 @@ const App: React.FC = () => {
   const [isGeneratingImg, setIsGeneratingImg] = useState(false);
   const [itemImage, setItemImage] = useState<string | null>(null);
   const [showAllCats, setShowAllCats] = useState(false);
+  const [hasMagicKey, setHasMagicKey] = useState(true);
 
   useEffect(() => {
-    localStorage.setItem('kids_joy_v10_data', JSON.stringify(categories));
+    localStorage.setItem('kids_joy_v11_data', JSON.stringify(categories));
   }, [categories]);
 
+  // بررسی وضعیت کلید هنگام شروع
+  useEffect(() => {
+    const checkKey = async () => {
+      if (window.aistudio) {
+        const has = await window.aistudio.hasSelectedApiKey();
+        setHasMagicKey(has || !!process.env.API_KEY);
+      } else {
+        setHasMagicKey(!!process.env.API_KEY);
+      }
+    };
+    checkKey();
+  }, []);
+
   const handleApiError = async (error: any) => {
-    console.error("API Error Details:", error);
-    const errorStr = String(error);
-    
-    // اگر کلید انتخاب نشده یا نامعتبر باشد، مستقیم پنجره را باز می‌کنیم
-    if (
-      errorStr.includes("API_KEY_MISSING") || 
-      errorStr.includes("API key is missing") ||
-      errorStr.includes("Requested entity was not found") ||
-      errorStr.includes("401") || 
-      errorStr.includes("403")
-    ) {
+    console.error("API Error:", error);
+    const errStr = String(error);
+    if (errStr.includes("401") || errStr.includes("403") || errStr.includes("key") || errStr.includes("entity")) {
       if (window.aistudio) {
         await window.aistudio.openSelectKey();
+        setHasMagicKey(true);
       }
-    } else {
-      // برای سایر خطاها (مثل اینترنت)
-      console.warn("Non-auth error:", error);
     }
   };
 
-  const checkKeyBeforeAction = async () => {
+  const setupMagic = async () => {
     if (window.aistudio) {
-      const hasKey = await window.aistudio.hasSelectedApiKey();
-      if (!hasKey) {
-        await window.aistudio.openSelectKey();
-        return true; // فرض بر انتخاب موفق طبق مستندات
-      }
+      await window.aistudio.openSelectKey();
+      setHasMagicKey(true);
+    } else {
+      alert("Please set your API_KEY in Cloudflare settings!");
     }
-    return true;
   };
 
   useEffect(() => {
@@ -68,7 +70,7 @@ const App: React.FC = () => {
       if (state.view === 'learning_detail' && state.selectedCategory) {
         const item = state.selectedCategory.items[learningIndex];
         if (item) {
-          const cached = await imageStorage.get(`img_v10_${item.id}`);
+          const cached = await imageStorage.get(`img_v11_${item.id}`);
           setItemImage(cached);
         }
       }
@@ -85,10 +87,10 @@ const App: React.FC = () => {
         try {
           const audio = await generateSpeech(text);
           if (audio) { await playTTSSound(audio, text); played = true; }
-        } catch (e) { console.error("TTS Failed:", e); }
+        } catch (e) {}
       }
       if (!played) await playLocalSpeech(text);
-    } catch (e) { console.error("Speech Error:", e); }
+    } catch (e) {}
     finally { setIsSpeaking(false); }
   };
 
@@ -96,12 +98,11 @@ const App: React.FC = () => {
     const item = state.selectedCategory?.items[learningIndex];
     if (isGeneratingImg || !item) return;
     
-    await checkKeyBeforeAction();
     setIsGeneratingImg(true);
     try {
       const url = await generateItemImage(item.name, state.selectedCategory!.name);
       if (url) {
-        await imageStorage.set(`img_v10_${item.id}`, url);
+        await imageStorage.set(`img_v11_${item.id}`, url);
         setItemImage(url);
       }
     } catch (e) { 
@@ -113,8 +114,6 @@ const App: React.FC = () => {
 
   const handleExpand = async () => {
     if (isExpanding || !state.selectedCategory) return;
-    
-    await checkKeyBeforeAction();
     setIsExpanding(true);
     try {
       const newItems = await expandCategoryItems(state.selectedCategory.name, state.selectedCategory.items);
@@ -143,6 +142,19 @@ const App: React.FC = () => {
           </div>
           
           <div className="flex-1 overflow-y-auto p-6 space-y-6 scroll-container hide-scrollbar">
+            {!hasMagicKey && (
+              <button onClick={setupMagic} className="w-full bg-magic p-5 rounded-[2rem] shadow-xl flex items-center justify-between text-white magic-btn-active">
+                <div className="flex items-center space-x-4">
+                  <span className="text-3xl">🪄</span>
+                  <div className="text-left">
+                    <p className="font-kids text-sm uppercase">Activate Magic</p>
+                    <p className="text-[9px] opacity-80">Click here to enable painting & more!</p>
+                  </div>
+                </div>
+                <span className="text-xl">➔</span>
+              </button>
+            )}
+
             <div className="grid grid-cols-2 gap-4">
               <button onClick={() => setState({ ...state, view: 'alphabet' })} className="col-span-2 bg-[#22C55E] p-6 rounded-[2.5rem] shadow-xl flex items-center justify-center space-x-4 btn-tap border-b-8 border-green-600">
                 <span className="text-4xl">🔤</span>
@@ -156,8 +168,8 @@ const App: React.FC = () => {
 
             <div className="space-y-4">
               <div className="flex items-center justify-between px-2">
-                <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest">Main Topics</h2>
-                <button onClick={() => setShowAllCats(true)} className="text-[10px] font-bold text-indigo-500 underline">Browse 25 Categories</button>
+                <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest">TOPICS</h2>
+                <button onClick={() => setShowAllCats(true)} className="text-[10px] font-bold text-indigo-500 underline uppercase">All 25</button>
               </div>
               <div className="grid grid-cols-3 gap-3">
                 {categories.slice(0, 9).map(cat => (
@@ -167,12 +179,6 @@ const App: React.FC = () => {
                   </button>
                 ))}
               </div>
-            </div>
-            
-            <div className="pt-4 text-center">
-              <button onClick={() => window.aistudio?.openSelectKey()} className="px-6 py-2 bg-white rounded-full text-[9px] font-black text-slate-200 uppercase tracking-widest border border-slate-100">
-                Update API Key 🪄
-              </button>
             </div>
           </div>
         </div>
@@ -212,13 +218,18 @@ const App: React.FC = () => {
             </div>
 
             <div className="flex-1 flex flex-col items-center justify-center p-6 relative">
-              <button onClick={handleImageGen} className={`absolute bottom-32 left-8 w-16 h-16 bg-pink-500 rounded-full flex items-center justify-center text-3xl text-white shadow-2xl border-4 border-white z-20 btn-tap ${isGeneratingImg ? 'animate-spin' : ''}`}>
-                {isGeneratingImg ? '⏳' : '🎨'}
-              </button>
-              
-              <button onClick={() => handleSpeech(state.selectedCategory?.items[learningIndex]?.name || "")} className="absolute bottom-32 right-8 w-16 h-16 bg-indigo-500 rounded-full flex items-center justify-center text-3xl text-white shadow-2xl border-4 border-white z-20 btn-tap">
-                🔊
-              </button>
+              {/* چیدمان اصلاح شده دکمه‌ها برای تداخل کمتر */}
+              <div className="absolute top-4 left-4 flex flex-col space-y-4">
+                 <button onClick={handleImageGen} className={`w-16 h-16 bg-pink-500 rounded-2xl flex items-center justify-center text-3xl text-white shadow-2xl border-4 border-white z-20 btn-tap ${isGeneratingImg ? 'animate-spin' : ''}`}>
+                  {isGeneratingImg ? '⏳' : '🎨'}
+                </button>
+              </div>
+
+              <div className="absolute top-4 right-4">
+                <button onClick={() => handleSpeech(state.selectedCategory?.items[learningIndex]?.name || "")} className="w-16 h-16 bg-indigo-500 rounded-2xl flex items-center justify-center text-3xl text-white shadow-2xl border-4 border-white z-20 btn-tap">
+                  🔊
+                </button>
+              </div>
 
               <div className="w-full max-w-[320px] relative">
                 <div onClick={() => setShowPersian(!showPersian)} className={`w-full aspect-square rounded-[4rem] shadow-2xl flex flex-col items-center justify-center relative border-[10px] transition-all duration-500 ${showPersian ? 'bg-indigo-600 border-indigo-400' : 'bg-white border-white'}`}>
@@ -238,7 +249,7 @@ const App: React.FC = () => {
                   ) : (
                     <div className="text-center p-8 animate-in zoom-in flex flex-col items-center justify-center">
                       <h2 className="text-6xl font-kids text-white mb-4" dir="rtl">{state.selectedCategory.items[learningIndex]?.persianName}</h2>
-                      <p className="text-xs text-white/30 uppercase font-black tracking-widest mt-8">Tap to see picture</p>
+                      <p className="text-xs text-white/30 uppercase font-black tracking-widest mt-8">TAP TO SEE PICTURE</p>
                     </div>
                   )}
                 </div>
@@ -253,7 +264,7 @@ const App: React.FC = () => {
             <div className="px-8 pb-10 flex-shrink-0">
               <button onClick={handleExpand} disabled={isExpanding} className={`w-full py-5 rounded-[3rem] font-black text-white shadow-2xl transition-all flex items-center justify-center space-x-3 text-lg tracking-widest active:scale-95 ${isExpanding ? 'bg-slate-300' : 'bg-magic magic-btn-active'}`}>
                 <span className="text-3xl">🪄</span>
-                <span>{isExpanding ? 'WORKING MAGIC...' : `GET 10 NEW`}</span>
+                <span>{isExpanding ? 'MAGIC...' : `GET 10 NEW`}</span>
               </button>
             </div>
           </div>
