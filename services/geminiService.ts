@@ -1,24 +1,31 @@
 import { GoogleGenAI, Modality, Type } from "@google/genai";
 import { Item } from "../types";
 
+const createAI = () => {
+  const apiKey = process.env.API_KEY || "";
+  return new GoogleGenAI({ apiKey });
+};
+
 export const getFunFact = async (itemName: string, categoryName: string): Promise<string> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
-  const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
-    contents: `Give me a very short (max 10 words), cheerful fact about a ${itemName} for a 5-year-old child to learn.`,
-  });
-  return response.text || "Learning is fun!";
+  const ai = createAI();
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: `Tell me a very short, simple, and fun fact for a child about "${itemName}" in category "${categoryName}".`,
+    });
+    return response.text || "Let's learn more about this!";
+  } catch (e) { return "Learning is fun!"; }
 };
 
 export const expandCategoryItems = async (categoryName: string, existingItems: Item[]): Promise<Item[]> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+  const ai = createAI();
   const existingNames = existingItems.map(i => i.name).join(", ");
   
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
-    contents: `You are a helpful educational assistant. Generate exactly 10 new unique vocabulary items for the category "${categoryName}". 
-    Do not include these items which are already in the list: [${existingNames}].
-    Return ONLY a valid JSON array of objects with keys: "name" (English), "persianName" (Farsi), "emoji".`,
+    contents: `Generate 10 new English vocabulary items for children in the category "${categoryName}".
+    Avoid: [${existingNames}].
+    Return ONLY a raw JSON array of objects: [{"name": "English", "persianName": "Farsi", "emoji": "🍎"}].`,
     config: {
       responseMimeType: "application/json",
       responseSchema: {
@@ -36,7 +43,8 @@ export const expandCategoryItems = async (categoryName: string, existingItems: I
     }
   });
 
-  const data = JSON.parse(response.text || "[]");
+  const text = response.text || "[]";
+  const data = JSON.parse(text);
   
   return data.map((it: any, index: number) => ({
     id: `dyn-${categoryName}-${Date.now()}-${index}`,
@@ -48,7 +56,7 @@ export const expandCategoryItems = async (categoryName: string, existingItems: I
 };
 
 export const generateSpeech = async (text: string): Promise<string | undefined> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+  const ai = createAI();
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash-preview-tts",
     contents: [{ parts: [{ text: `Say clearly: ${text}` }] }],
@@ -63,8 +71,8 @@ export const generateSpeech = async (text: string): Promise<string | undefined> 
 };
 
 export const generateItemImage = async (itemName: string, categoryName: string): Promise<string | undefined> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
-  const prompt = `A clean, bright, cute 3D cartoon style illustration of a ${itemName} on a solid white background. High quality, vibrant colors, child-friendly design.`;
+  const ai = createAI();
+  const prompt = `A clean, cute 3D cartoon illustration of a ${itemName} on white background. High quality, vibrant.`;
   
   const response = await ai.models.generateContent({
     model: 'gemini-2.5-flash-image',
