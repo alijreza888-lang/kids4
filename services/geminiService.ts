@@ -1,12 +1,9 @@
 import { GoogleGenAI, Modality, Type } from "@google/genai";
 import { Item } from "../types";
 
-// ایجاد اینستنس جدید در هر فراخوانی برای اطمینان از داشتن آخرین کلید از process.env
+// ایجاد کلاینت به صورت پویا با استفاده از متغیر محیطی تزریق شده
 const getClient = () => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) {
-    throw new Error("API_KEY_MISSING");
-  }
+  const apiKey = process.env.API_KEY || ""; // اجازه می‌دهیم SDK خودش مدیریت کند
   return new GoogleGenAI({ apiKey });
 };
 
@@ -78,7 +75,7 @@ export const generateSpeech = async (text: string): Promise<string | undefined> 
 
 export const generateItemImage = async (itemName: string, categoryName: string): Promise<string | undefined> => {
   const ai = getClient();
-  const prompt = `A clean, cute 3D cartoon illustration of a ${itemName} on white background. High quality, vibrant style for kids.`;
+  const prompt = `A vibrant 3D cartoon illustration of a ${itemName} on white background. High quality, cute style for kids.`;
   
   const response = await ai.models.generateContent({
     model: 'gemini-2.5-flash-image',
